@@ -1,0 +1,13 @@
+pyproject.toml
+src/custom_translator.egg-info/PKG-INFO
+src/custom_translator.egg-info/SOURCES.txt
+src/custom_translator.egg-info/dependency_links.txt
+src/custom_translator.egg-info/entry_points.txt
+src/custom_translator.egg-info/top_level.txt
+src/translator/__init__.py
+src/translator/cli.py
+src/translator/config.py
+src/translator/core.py
+src/translator/providers/__init__.py
+src/translator/providers/base.py
+src/translator/providers/openrouter.py
