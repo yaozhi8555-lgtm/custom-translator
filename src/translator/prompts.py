@@ -38,3 +38,15 @@ DETAILED_SYSTEM_PROMPT = """你是一个专业翻译助手兼语言教学专家�
 - vocabulary 挑选3-5个最值得学习的词汇或表达，每个词至少给2个例句
 - 如果原文中有俚语或固定搭配，优先收录
 - other_languages 暂时返回空对象 {{}}"""
+
+
+# 新增：带词典上下文的 prompt 包装函数
+def inject_dict_context(base_prompt: str, dict_context: str) -> str:
+    """
+    把词典检索结果注入到 system prompt 里。
+    如果没有检索到词条，直接返回原始 prompt 不做修改。
+    """
+    if not dict_context:
+        return base_prompt
+
+    return base_prompt + f"\n\n{dict_context}"

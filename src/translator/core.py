@@ -5,7 +5,12 @@ from .schemas import (
     QuickResult, DetailedResult,
     SentenceComponent, VocabItem
 )
-from .prompts import QUICK_SYSTEM_PROMPT, DETAILED_SYSTEM_PROMPT
+from .prompts import (
+    QUICK_SYSTEM_PROMPT,
+    DETAILED_SYSTEM_PROMPT,
+    inject_dict_context
+)
+from .dictionary.retriever import retrieve, format_for_prompt
 
 
 def translate(
@@ -27,7 +32,12 @@ def translate(
 
 
 def _translate_quick(provider, text, source_lang, target_lang, model) -> QuickResult:
-    system_prompt = QUICK_SYSTEM_PROMPT.format(target_lang=target_lang)
+    # 查词典，注入上下文
+    dict_entries = retrieve(text)
+    dict_context = format_for_prompt(dict_entries)
+    base_prompt = QUICK_SYSTEM_PROMPT.format(target_lang=target_lang)
+    system_prompt = inject_dict_context(base_prompt, dict_context)
+
     result = provider.chat(
         system_prompt=system_prompt,
         user_message=text,
@@ -44,10 +54,15 @@ def _translate_quick(provider, text, source_lang, target_lang, model) -> QuickRe
 
 
 def _translate_detailed(provider, text, source_lang, target_lang, model) -> DetailedResult:
-    system_prompt = DETAILED_SYSTEM_PROMPT.format(
+    # 查词典，注入上下文
+    dict_entries = retrieve(text)
+    dict_context = format_for_prompt(dict_entries)
+    base_prompt = DETAILED_SYSTEM_PROMPT.format(
         source_lang=source_lang,
         target_lang=target_lang,
     )
+    system_prompt = inject_dict_context(base_prompt, dict_context)
+
     result = provider.chat(
         system_prompt=system_prompt,
         user_message=text,
