@@ -1,13 +1,13 @@
 import argparse
 from .core import translate
 from .schemas import QuickResult, DetailedResult
-
+import re
 
 def main():
     parser = argparse.ArgumentParser(description="定制化翻译工具")
     parser.add_argument("text", help="要翻译的文本")
-    parser.add_argument("--from", dest="source_lang", default="中文", help="原文语言，默认中文")
-    parser.add_argument("--to", default="英文", help="目标语言，默认英文")
+    parser.add_argument("--from", dest="source_lang", default=None, help="原文语言，默认中文")
+    parser.add_argument("--to", default=None, help="目标语言，默认自动检测（中文↔英文互译）")
     parser.add_argument(
         "--mode",
         default="quick",
@@ -16,13 +16,17 @@ def main():
     )
     args = parser.parse_args()
 
+   # 自动检测原文语言
+    source_lang = args.source_lang or detect_source_lang(args.text)
+
+    # 自动推断目标语言（没指定就反向互译）
+    if args.to:
+        target_lang = args.to
+    else:
+        target_lang = "英文" if source_lang == "中文" else "中文"
+
     try:
-        result = translate(
-            args.text,
-            source_lang=args.source_lang,
-            target_lang=args.to,
-            mode=args.mode,
-        )
+        result = translate(args.text, source_lang=source_lang, target_lang=target_lang, mode=args.mode)
         _print_result(result)
     except RuntimeError as e:
         print(f"\n错误：{e}")
@@ -73,6 +77,14 @@ def _print_detailed(result: DetailedResult):
 
     print(f"\n(消耗 tokens：输入 {result.input_tokens} / 输出 {result.output_tokens})")
     print(f"{LINE}\n")
+
+def detect_source_lang(text: str) -> str:
+    """
+    简单判断：文本里有中文字符就是中文，否则是英文。
+    不需要第三方库，覆盖日常中英互译场景足够用。
+    """
+    chinese_chars = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf]')
+    return "中文" if chinese_chars.search(text) else "英文"
 
 
 if __name__ == "__main__":

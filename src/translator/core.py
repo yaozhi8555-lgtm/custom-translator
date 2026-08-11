@@ -11,6 +11,15 @@ from .prompts import (
     inject_dict_context
 )
 from .dictionary.retriever import retrieve, format_for_prompt
+from .history import store as history_store
+from .history.retriever import (
+    retrieve_similar as retrieve_history,
+    add_to_index as add_history_to_index,
+    format_for_prompt as history_format_for_prompt,
+)
+
+# 程序启动时初始化历史数据库
+history_store.init_db()
 
 
 def translate(
@@ -32,18 +41,26 @@ def translate(
 
 
 def _translate_quick(provider, text, source_lang, target_lang, model) -> QuickResult:
-    # 查词典，注入上下文
+    # 1. 检索词典
     dict_entries = retrieve(text)
     dict_context = format_for_prompt(dict_entries)
+
+    # 2. 检索历史（新增）
+    history_records = retrieve_history(text, target_lang)
+    history_context = history_format_for_prompt(history_records)
+
+    # 3. 组装 prompt（词典上下文 + 历史上下文）
     base_prompt = QUICK_SYSTEM_PROMPT.format(target_lang=target_lang)
     system_prompt = inject_dict_context(base_prompt, dict_context)
+    system_prompt = inject_dict_context(system_prompt, history_context)
 
     result = provider.chat(
         system_prompt=system_prompt,
         user_message=text,
         model=model
     )
-    return QuickResult(
+
+    quick_result = QuickResult(
         original=text,
         translation=result["content"],
         source_lang=source_lang,
@@ -52,16 +69,38 @@ def _translate_quick(provider, text, source_lang, target_lang, model) -> QuickRe
         output_tokens=result["output_tokens"],
     )
 
+    # 4. 存入历史（新增）
+    record_id = history_store.save(
+        source_lang=source_lang,
+        target_lang=target_lang,
+        original=text,
+        translation=result["content"],
+        mode="quick",
+        model_used=model,
+        input_tokens=result["input_tokens"],
+        output_tokens=result["output_tokens"],
+    )
+    add_history_to_index(record_id, text)
+
+    return quick_result
+
 
 def _translate_detailed(provider, text, source_lang, target_lang, model) -> DetailedResult:
-    # 查词典，注入上下文
+    # 1. 检索词典
     dict_entries = retrieve(text)
     dict_context = format_for_prompt(dict_entries)
+
+    # 2. 检索历史（新增）
+    history_records = retrieve_history(text, target_lang)
+    history_context = history_format_for_prompt(history_records)
+
+    # 3. 组装 prompt（词典上下文 + 历史上下文）
     base_prompt = DETAILED_SYSTEM_PROMPT.format(
         source_lang=source_lang,
         target_lang=target_lang,
     )
     system_prompt = inject_dict_context(base_prompt, dict_context)
+    system_prompt = inject_dict_context(system_prompt, history_context)
 
     result = provider.chat(
         system_prompt=system_prompt,
@@ -92,7 +131,7 @@ def _translate_detailed(provider, text, source_lang, target_lang, model) -> Deta
         for v in parsed.get("vocabulary", [])
     ]
 
-    return DetailedResult(
+    detailed_result = DetailedResult(
         original=text,
         source_lang=source_lang,
         target_lang=target_lang,
@@ -105,6 +144,22 @@ def _translate_detailed(provider, text, source_lang, target_lang, model) -> Deta
         input_tokens=result["input_tokens"],
         output_tokens=result["output_tokens"],
     )
+
+    # 4. 存入历史（新增）
+    record_id = history_store.save(
+        source_lang=source_lang,
+        target_lang=target_lang,
+        original=text,
+        translation=parsed["translation"],
+        mode="detailed",
+        model_used=model,
+        input_tokens=result["input_tokens"],
+        output_tokens=result["output_tokens"],
+        full_result=parsed,  # detailed模式存完整JSON备查
+    )
+    add_history_to_index(record_id, text)
+
+    return detailed_result
 
 
 def _parse_json(content: str) -> dict:

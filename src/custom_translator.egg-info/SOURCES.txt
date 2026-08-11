@@ -8,6 +8,17 @@ src/translator/__init__.py
 src/translator/cli.py
 src/translator/config.py
 src/translator/core.py
+src/translator/prompts.py
+src/translator/schemas.py
+src/translator/dictionary/__init__.py
+src/translator/dictionary/loader.py
+src/translator/dictionary/retriever.py
+src/translator/dictionary/store.py
+src/translator/embeddings/__init__.py
+src/translator/embeddings/embedder.py
+src/translator/history/__init__.py
+src/translator/history/retriever.py
+src/translator/history/store.py
 src/translator/providers/__init__.py
 src/translator/providers/base.py
 src/translator/providers/openrouter.py
