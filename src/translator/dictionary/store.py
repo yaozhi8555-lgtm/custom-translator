@@ -43,8 +43,30 @@ def build_index(dict_path: str, db_path: str) -> None:
 
 
 def index_exists(db_path: str) -> bool:
-    """检查索引是否已建立"""
-    return Path(db_path).exists()
+    """
+    检查索引是否已建立。
+    不能只看文件存不存在——sqlite3.connect() 哪怕数据库是空的也会先创建出这个文件，
+    之前就是因为只判断"文件存在"，导致 entries 表其实是空的，也被误判为"已建立"。
+    这里改成真正查表里有没有数据。
+    """
+    path = Path(db_path)
+    if not path.exists():
+        return False
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='entries'"
+        )
+        if cursor.fetchone() is None:
+            return False  # 表都还没建
+
+        cursor.execute("SELECT COUNT(*) FROM entries")
+        count = cursor.fetchone()[0]
+        return count > 0
+    finally:
+        conn.close()
 
 
 def lookup(db_path: str, word: str) -> list[DictEntry]:

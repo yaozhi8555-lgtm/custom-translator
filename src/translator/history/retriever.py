@@ -46,6 +46,7 @@ def retrieve_similar(text: str, target_lang: str) -> list[dict]:
     )
 
     similar = []
+    seen = set()  # 记录已经出现过的 (原文, 译文) 组合，避免重复注入 prompt
     for doc_id, distance in zip(
         results["ids"][0],
         results["distances"][0],
@@ -58,9 +59,19 @@ def retrieve_similar(text: str, target_lang: str) -> list[dict]:
             continue
 
         record = get_by_id(int(doc_id))
-        if record and record["target_lang"] == target_lang:
-            record["similarity"] = round(similarity, 3)
-            similar.append(record)
+        if not record or record["target_lang"] != target_lang:
+            continue
+
+        # 历史里可能存在完全相同的原文+译文（比如同一句话被反复翻译过）
+        # SQLite/ChromaDB 里如实保留每条记录（用于成本统计），但注入 prompt 时去重，
+        # 避免同样的参考内容重复出现、浪费 token
+        dedup_key = (record["original"], record["translation"])
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+
+        record["similarity"] = round(similarity, 3)
+        similar.append(record)
 
     return similar[:MAX_HISTORY_RESULTS]
 
