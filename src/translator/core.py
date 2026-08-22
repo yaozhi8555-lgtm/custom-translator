@@ -1,4 +1,5 @@
 import json
+from json_repair import repair_json
 from .config import OPENROUTER_API_KEY, DEFAULT_MODEL
 from .providers.openrouter import OpenRouterProvider
 from .schemas import (
@@ -59,7 +60,6 @@ def _translate_quick(provider, text, source_lang, target_lang, model) -> QuickRe
         user_message=text,
         model=model
     )
-
     quick_result = QuickResult(
         original=text,
         translation=result["content"],
@@ -174,9 +174,13 @@ def _parse_json(content: str) -> dict:
 
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
+        # 严格解析失败时，用 json_repair 兜底修复常见的格式错误
+        # （比如字符串内嵌未转义的引号、缺逗号等），修复失败会返回 {}
+        repaired = repair_json(cleaned, return_objects=True)
+        if isinstance(repaired, dict) and repaired:
+            return repaired
         raise RuntimeError(
-            f"模型返回的内容不是有效的 JSON 格式。\n"
-            f"原始内容：\n{content}\n"
-            f"错误详情：{e}"
+            f"模型返回的内容不是有效的 JSON 格式，自动修复也失败了。\n"
+            f"原始内容：\n{content}"
         )

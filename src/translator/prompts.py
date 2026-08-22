@@ -37,7 +37,8 @@ DETAILED_SYSTEM_PROMPT = """你是一个专业翻译助手兼语言教学专家�
 - sentence_structure 必须覆盖原文的每一个主要成分，不能遗漏
 - vocabulary 挑选3-5个最值得学习的词汇或表达，每个词至少给2个例句
 - 如果原文中有俚语或固定搭配，优先收录
-- other_languages 暂时返回空对象 {{}}"""
+- other_languages 暂时返回空对象 {{}}
+- 【重要】JSON 字符串内部禁止出现英文双引号 " 。如果需要在 explanation、overall_note 等字段里引用原文中的词或短语，请使用中文引号「」包裹，不要用 " 包裹，否则会破坏 JSON 格式"""
 
 
 # 新增：带词典上下文的 prompt 包装函数
