@@ -74,6 +74,10 @@ class DetailedResult:
     # 例：{"日文": "今日はとても疲れた", "韩文": "오늘 너무 피곤해"}
     other_languages: dict[str, str] = field(default_factory=dict)
 
+    # Phase5 新增：可观测性字段，用来看清模型在工具调用循环里到底干了什么
+    tools_used: list[str] = field(default_factory=list)  # 这次翻译调用了哪些工具
+    tool_rounds: int = 0                                 # 循环了几轮（只知道用了哪些工具不够，还要知道绕了几圈才能判断成本）
+
     # token 统计
     input_tokens: int = 0
     output_tokens: int = 0

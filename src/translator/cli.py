@@ -14,6 +14,11 @@ def main():
         choices=["quick", "detailed"],
         help="翻译模式：quick（仅直译）或 detailed（完整分析），默认 quick"
     )
+    parser.add_argument(
+        "--no-tools",
+        action="store_true",
+        help="detailed 模式下关闭工具调用，改用固定检索（更省 token）"
+    )
     args = parser.parse_args()
 
    # 自动检测原文语言
@@ -26,7 +31,13 @@ def main():
         target_lang = "英文" if source_lang == "中文" else "中文"
 
     try:
-        result = translate(args.text, source_lang=source_lang, target_lang=target_lang, mode=args.mode)
+        result = translate(
+            args.text,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            mode=args.mode,
+            use_tools=not args.no_tools,   # argparse 把 --no-tools 存成 True，含义要反过来
+        )
         _print_result(result)
     except RuntimeError as e:
         print(f"\n错误：{e}")
@@ -46,6 +57,13 @@ def _print_quick(result: QuickResult):
 
 def _print_detailed(result: DetailedResult):
     LINE = "=" * 55
+
+    # Phase5：把模型在循环里干了什么显示出来，否则这部分完全是黑箱
+    if result.tools_used:
+        tools_str = " + ".join(result.tools_used)
+        print(f"\n[工具调用] {tools_str}（共 {result.tool_rounds} 轮）")
+    elif result.tool_rounds:
+        print(f"\n[工具调用] 无（模型判断不需要外部信息）")
 
     print(f"\n原文（{result.source_lang}）：{result.original}")
     print(f"\n【译文】{result.translation}")
